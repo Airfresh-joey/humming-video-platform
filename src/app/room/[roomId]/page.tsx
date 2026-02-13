@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useEffect, useState, useCallback, Suspense, useRef } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import DailyIframe from '@daily-co/daily-js'
 
@@ -16,11 +16,13 @@ function RoomContent() {
   const userName = searchParams.get('name') || 'Guest'
   
   const [callState, setCallState] = useState<CallState>({ status: 'idle' })
-  const [callFrame, setCallFrame] = useState<any>(null)
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoOff, setIsVideoOff] = useState(false)
   const [isScreenSharing, setIsScreenSharing] = useState(false)
   const [participantCount, setParticipantCount] = useState(1)
+  
+  const callFrameRef = useRef<any>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const joinCall = useCallback(async () => {
     setCallState({ status: 'joining' })
@@ -59,12 +61,9 @@ function RoomContent() {
         throw new Error('Failed to get meeting token')
       }
 
-      // Create the Daily call frame
-      const container = document.getElementById('call-container')
+      // Use the ref container
+      const container = containerRef.current
       if (!container) throw new Error('Container not found')
-
-      // Clear any existing content
-      container.innerHTML = ''
 
       console.log('Creating Daily frame...')
       const frame = DailyIframe.createFrame(container, {
@@ -92,6 +91,8 @@ function RoomContent() {
         },
       })
 
+      callFrameRef.current = frame
+
       // Set up event listeners
       frame.on('joined-meeting', () => {
         console.log('Joined meeting!')
@@ -112,24 +113,14 @@ function RoomContent() {
         setParticipantCount(event.participantCounts.present)
       })
 
-      frame.on('loading', () => {
-        console.log('Daily: loading...')
-      })
-
-      frame.on('loaded', () => {
-        console.log('Daily: loaded!')
-      })
-
       // Join the room
-      console.log('Joining room:', tokenData.roomUrl, 'with token')
-      const joinResult = await frame.join({
+      console.log('Joining room:', tokenData.roomUrl)
+      await frame.join({
         url: tokenData.roomUrl,
         token: tokenData.token,
         userName: userName,
       })
-      console.log('Join result:', joinResult)
 
-      setCallFrame(frame)
     } catch (error: any) {
       console.error('Failed to join call:', error)
       setCallState({ status: 'error', error: error.message })
@@ -137,41 +128,41 @@ function RoomContent() {
   }, [roomId, userName])
 
   const leaveCall = useCallback(async () => {
-    if (callFrame) {
+    if (callFrameRef.current) {
       setCallState({ status: 'leaving' })
-      await callFrame.leave()
-      callFrame.destroy()
-      setCallFrame(null)
+      await callFrameRef.current.leave()
+      callFrameRef.current.destroy()
+      callFrameRef.current = null
       setCallState({ status: 'idle' })
     }
-  }, [callFrame])
+  }, [])
 
   const toggleMute = useCallback(() => {
-    if (callFrame) {
+    if (callFrameRef.current) {
       const newMuted = !isMuted
-      callFrame.setLocalAudio(!newMuted)
+      callFrameRef.current.setLocalAudio(!newMuted)
       setIsMuted(newMuted)
     }
-  }, [callFrame, isMuted])
+  }, [isMuted])
 
   const toggleVideo = useCallback(() => {
-    if (callFrame) {
+    if (callFrameRef.current) {
       const newVideoOff = !isVideoOff
-      callFrame.setLocalVideo(!newVideoOff)
+      callFrameRef.current.setLocalVideo(!newVideoOff)
       setIsVideoOff(newVideoOff)
     }
-  }, [callFrame, isVideoOff])
+  }, [isVideoOff])
 
   const toggleScreenShare = useCallback(async () => {
-    if (callFrame) {
+    if (callFrameRef.current) {
       if (isScreenSharing) {
-        await callFrame.stopScreenShare()
+        await callFrameRef.current.stopScreenShare()
       } else {
-        await callFrame.startScreenShare()
+        await callFrameRef.current.startScreenShare()
       }
       setIsScreenSharing(!isScreenSharing)
     }
-  }, [callFrame, isScreenSharing])
+  }, [isScreenSharing])
 
   const copyInviteLink = useCallback(() => {
     const link = window.location.href
@@ -182,11 +173,13 @@ function RoomContent() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (callFrame) {
-        callFrame.destroy()
+      if (callFrameRef.current) {
+        callFrameRef.current.destroy()
       }
     }
-  }, [callFrame])
+  }, [])
+
+  const showVideo = callState.status === 'joining' || callState.status === 'joined' || callState.status === 'leaving'
 
   return (
     <main className="min-h-screen bg-slate-900 flex flex-col">
@@ -208,7 +201,8 @@ function RoomContent() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 flex flex-col">
+      <div className="flex-1 p-4 flex flex-col min-h-0">
+        {/* Idle state - join prompt */}
         {callState.status === 'idle' && (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -228,24 +222,7 @@ function RoomContent() {
           </div>
         )}
 
-        {callState.status === 'joining' && (
-          <div className="flex-1 flex flex-col min-h-0">
-            {/* Container for Daily frame - must be visible for frame creation */}
-            <div
-              id="call-container"
-              className="flex-1 rounded-xl overflow-hidden bg-black"
-              style={{ minHeight: 'calc(100vh - 150px)' }}
-            >
-              <div className="h-full w-full flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-white">Joining meeting...</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* Error state */}
         {callState.status === 'error' && (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center max-w-md">
@@ -263,83 +240,86 @@ function RoomContent() {
           </div>
         )}
 
-        {(callState.status === 'joined' || callState.status === 'leaving') && (
-          <>
-            {/* Video Container */}
-            <div
-              id="call-container"
-              className="flex-1 rounded-xl overflow-hidden bg-black"
-              style={{ minHeight: 'calc(100vh - 150px)' }}
-            ></div>
+        {/* Video container - ALWAYS rendered, visibility controlled by CSS */}
+        <div
+          ref={containerRef}
+          className={`flex-1 rounded-xl overflow-hidden bg-black ${showVideo ? '' : 'hidden'}`}
+          style={{ minHeight: showVideo ? 'calc(100vh - 200px)' : '0' }}
+        />
 
-            {/* Controls */}
-            <div className="mt-4 flex items-center justify-center gap-4">
-              <button
-                onClick={toggleMute}
-                className={`p-4 rounded-full transition-colors ${
-                  isMuted
-                    ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-slate-700 hover:bg-slate-600'
-                }`}
-                title={isMuted ? 'Unmute' : 'Mute'}
-              >
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {isMuted ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                  )}
-                </svg>
-              </button>
-
-              <button
-                onClick={toggleVideo}
-                className={`p-4 rounded-full transition-colors ${
-                  isVideoOff
-                    ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-slate-700 hover:bg-slate-600'
-                }`}
-                title={isVideoOff ? 'Turn on camera' : 'Turn off camera'}
-              >
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {isVideoOff ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z M3 3l18 18" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  )}
-                </svg>
-              </button>
-
-              <button
-                onClick={toggleScreenShare}
-                className={`p-4 rounded-full transition-colors ${
-                  isScreenSharing
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-slate-700 hover:bg-slate-600'
-                }`}
-                title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
-              >
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </button>
-
-              <button
-                onClick={leaveCall}
-                className="p-4 rounded-full bg-red-600 hover:bg-red-700 transition-colors"
-                title="Leave meeting"
-              >
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z" />
-                </svg>
-              </button>
+        {/* Loading overlay when joining */}
+        {callState.status === 'joining' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-10 pointer-events-none">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-white">Connecting...</p>
             </div>
-          </>
+          </div>
         )}
 
-        {/* Hidden container for video when idle */}
-        {callState.status === 'idle' && (
-          <div id="call-container" className="hidden"></div>
+        {/* Controls - only when joined */}
+        {(callState.status === 'joined' || callState.status === 'leaving') && (
+          <div className="mt-4 flex items-center justify-center gap-4">
+            <button
+              onClick={toggleMute}
+              className={`p-4 rounded-full transition-colors ${
+                isMuted
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : 'bg-slate-700 hover:bg-slate-600'
+              }`}
+              title={isMuted ? 'Unmute' : 'Mute'}
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {isMuted ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                )}
+              </svg>
+            </button>
+
+            <button
+              onClick={toggleVideo}
+              className={`p-4 rounded-full transition-colors ${
+                isVideoOff
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : 'bg-slate-700 hover:bg-slate-600'
+              }`}
+              title={isVideoOff ? 'Turn on camera' : 'Turn off camera'}
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {isVideoOff ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z M3 3l18 18" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                )}
+              </svg>
+            </button>
+
+            <button
+              onClick={toggleScreenShare}
+              className={`p-4 rounded-full transition-colors ${
+                isScreenSharing
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-slate-700 hover:bg-slate-600'
+              }`}
+              title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </button>
+
+            <button
+              onClick={leaveCall}
+              className="p-4 rounded-full bg-red-600 hover:bg-red-700 transition-colors"
+              title="Leave meeting"
+            >
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z" />
+              </svg>
+            </button>
+          </div>
         )}
       </div>
     </main>
