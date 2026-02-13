@@ -182,26 +182,26 @@ function RoomContent() {
   const showVideo = callState.status === 'joining' || callState.status === 'joined' || callState.status === 'leaving'
 
   return (
-    <main className="min-h-screen bg-slate-900 flex flex-col">
-      {/* Header */}
-      <header className="bg-slate-800/50 backdrop-blur border-b border-slate-700 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <img src="/humming-logo.png" alt="Humming Agent AI" className="h-10 w-auto" />
-          <h1 className="text-white font-semibold">Meeting: {roomId}</h1>
-          <span className="text-slate-400 text-sm">
+    <main className="h-screen bg-slate-900 flex flex-col overflow-hidden">
+      {/* Header - hide when in call on mobile for more space */}
+      <header className={`bg-slate-800/50 backdrop-blur border-b border-slate-700 px-3 md:px-4 py-2 md:py-3 flex items-center justify-between ${showVideo ? 'hidden md:flex' : 'flex'}`}>
+        <div className="flex items-center gap-2 md:gap-4 min-w-0">
+          <img src="/humming-logo.png" alt="Humming Agent AI" className="h-8 md:h-10 w-auto flex-shrink-0" />
+          <h1 className="text-white font-semibold text-sm md:text-base truncate">Meeting: {roomId}</h1>
+          <span className="text-slate-400 text-xs md:text-sm whitespace-nowrap hidden sm:inline">
             {participantCount} participant{participantCount !== 1 ? 's' : ''}
           </span>
         </div>
         <button
           onClick={copyInviteLink}
-          className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors"
+          className="px-3 md:px-4 py-1.5 md:py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs md:text-sm font-medium transition-colors flex-shrink-0"
         >
-          Copy Invite Link
+          Copy Link
         </button>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 flex flex-col min-h-0">
+      <div className="flex-1 p-2 md:p-4 flex flex-col min-h-0 overflow-hidden">
         {/* Idle state - join prompt */}
         {callState.status === 'idle' && (
           <div className="flex-1 flex items-center justify-center">
@@ -243,8 +243,8 @@ function RoomContent() {
         {/* Video container - ALWAYS rendered, visibility controlled by CSS */}
         <div
           ref={containerRef}
-          className={`flex-1 rounded-xl overflow-hidden bg-black ${showVideo ? '' : 'hidden'}`}
-          style={{ minHeight: showVideo ? 'calc(100vh - 200px)' : '0' }}
+          className={`flex-1 rounded-lg md:rounded-xl overflow-hidden bg-black ${showVideo ? '' : 'hidden'}`}
+          style={{ minHeight: showVideo ? 'calc(100vh - 80px)' : '0', height: showVideo ? 'calc(100vh - 80px)' : '0' }}
         />
 
         {/* Loading overlay when joining */}
@@ -257,9 +257,9 @@ function RoomContent() {
           </div>
         )}
 
-        {/* Controls - only when joined */}
+        {/* Controls - only when joined, hidden on mobile since Daily has its own */}
         {(callState.status === 'joined' || callState.status === 'leaving') && (
-          <div className="mt-4 flex items-center justify-center gap-4">
+          <div className="hidden md:flex mt-4 items-center justify-center gap-4">
             <button
               onClick={toggleMute}
               className={`p-4 rounded-full transition-colors ${
