@@ -60,7 +60,7 @@ export default function Home() {
         {/* Header with Logo */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-4 mb-6">
-            <img src="/logo.svg" alt="Humming Agent AI" className="h-16 w-auto" />
+            <img src="/humming-logo.png" alt="Humming Agent AI" className="h-20 w-auto" />
             <h1 className="text-4xl md:text-5xl font-bold text-white">
               Humming Agent AI
             </h1>

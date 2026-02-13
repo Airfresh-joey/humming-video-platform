@@ -183,7 +183,7 @@ function RoomContent() {
       {/* Header */}
       <header className="bg-slate-800/50 backdrop-blur border-b border-slate-700 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <img src="/logo.svg" alt="Humming Agent AI" className="h-8 w-auto" />
+          <img src="/humming-logo.png" alt="Humming Agent AI" className="h-10 w-auto" />
           <h1 className="text-white font-semibold">Meeting: {roomId}</h1>
           <span className="text-slate-400 text-sm">
             {participantCount} participant{participantCount !== 1 ? 's' : ''}
