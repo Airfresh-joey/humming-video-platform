@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="bird-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4aa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00a896;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#bird-gradient)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="120" cy="100" rx="25" ry="35"/>
+    <circle cx="120" cy="70" r="15"/>
+    <line x1="125" y1="65" x2="150" y2="55"/>
+    <path d="M 95 90 Q 50 70, 30 90 Q 40 95, 95 100"/>
+    <path d="M 95 110 Q 50 130, 30 110 Q 40 105, 95 100"/>
+    <path d="M 145 100 L 170 90 M 145 100 L 170 110"/>
+  </g>
+</svg>
