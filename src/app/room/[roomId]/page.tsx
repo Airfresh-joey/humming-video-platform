@@ -229,15 +229,18 @@ function RoomContent() {
         )}
 
         {callState.status === 'joining' && (
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0">
             {/* Container for Daily frame - must be visible for frame creation */}
             <div
               id="call-container"
-              className="flex-1 rounded-xl overflow-hidden bg-black min-h-[400px] flex items-center justify-center"
+              className="flex-1 rounded-xl overflow-hidden bg-black"
+              style={{ minHeight: 'calc(100vh - 150px)' }}
             >
-              <div className="text-center">
-                <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-white">Joining meeting...</p>
+              <div className="h-full w-full flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-white">Joining meeting...</p>
+                </div>
               </div>
             </div>
           </div>
@@ -265,7 +268,8 @@ function RoomContent() {
             {/* Video Container */}
             <div
               id="call-container"
-              className="flex-1 rounded-xl overflow-hidden bg-black min-h-[400px]"
+              className="flex-1 rounded-xl overflow-hidden bg-black"
+              style={{ minHeight: 'calc(100vh - 150px)' }}
             ></div>
 
             {/* Controls */}
