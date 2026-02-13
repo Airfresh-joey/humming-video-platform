@@ -247,15 +247,7 @@ function RoomContent() {
           style={{ minHeight: showVideo ? 'calc(100vh - 80px)' : '0', height: showVideo ? 'calc(100vh - 80px)' : '0' }}
         />
 
-        {/* Loading overlay when joining */}
-        {callState.status === 'joining' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 z-10 pointer-events-none">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-white">Connecting...</p>
-            </div>
-          </div>
-        )}
+        {/* Note: Removed loading overlay - Daily has its own prelobby UI */}
 
         {/* Controls - only when joined, hidden on mobile since Daily has its own */}
         {(callState.status === 'joined' || callState.status === 'leaving') && (
